@@ -15,7 +15,7 @@ dependencies:
 
   # HTTP client & API handling
   dio: ^5.4.0
-  retrofit: ^4.1.0
+  retrofit: ^4.4.2
   json_serializable: ^6.7.1
 
   # Gestion d'état
@@ -39,6 +39,7 @@ dependencies:
 
   # Gestion des permissions (si besoin pour la localisation)
   permission_handler: ^11.3.0
+  json_annotation: ^4.9.0
 
 dev_dependencies:
   flutter_test:
