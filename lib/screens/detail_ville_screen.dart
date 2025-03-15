@@ -105,11 +105,14 @@ class _DetailVilleScreenState extends State<DetailVilleScreen> {
 
         actions: [
           IconButton(
-            icon: const Icon(Icons.brightness_6),
-            onPressed: () {
-              MyApp.of(context).toggleTheme();
-            },
-          ),
+                icon: Icon(
+                  MyApp.of(context).isDarkMode ? Icons.wb_sunny : Icons.nightlight_round,
+                  color: Colors.white,
+                ),
+                onPressed: () {
+                  MyApp.of(context).toggleTheme();
+                },
+              ),
         ],
 
       ),

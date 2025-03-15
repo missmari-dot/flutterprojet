@@ -190,12 +190,14 @@ class _ListVilleScreenState extends State<ListVilleScreen> {
 
         actions: [
           IconButton(
-            icon: const Icon(Icons.brightness_6),
-            onPressed: () {
-
-              MyApp.of(context).toggleTheme();
-            },
-          ),
+                icon: Icon(
+                  MyApp.of(context).isDarkMode ? Icons.wb_sunny : Icons.nightlight_round,
+                  color: Colors.white,
+                ),
+                onPressed: () {
+                  MyApp.of(context).toggleTheme();
+                },
+              ),
         ],
 
       ),
@@ -250,10 +252,26 @@ class _ListVilleScreenState extends State<ListVilleScreen> {
                   itemBuilder: (context, index) {
                     if (index == _filteredCities.length) {
                       // Indicateur de chargement en bas
-                      return const Padding(
-                        padding: EdgeInsets.all(16.0),
-                        child: Center(child: CircularProgressIndicator()),
+                      return Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Center(
+                          child: TweenAnimationBuilder<double>(
+                            tween: Tween<double>(begin: 0, end: 1),
+                            duration: const Duration(seconds: 1),
+                            curve: Curves.easeInOut,
+                            builder: (context, opacity, child) {
+                              return Opacity(
+                                opacity: opacity,
+                                child: RotationTransition(
+                                  turns: AlwaysStoppedAnimation(opacity),
+                                  child: const CircularProgressIndicator(),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
                       );
+
                     }
                     final ville = _filteredCities[index];
                     return VilleCard(
