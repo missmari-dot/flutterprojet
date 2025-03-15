@@ -1,8 +1,9 @@
 import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutterprojet/main.dart';
+import 'package:flutterprojet/widgets/bottom_app_bar_widget.dart';
 import 'package:flutterprojet/widgets/custom_radial_gauge.dart';
-import 'package:flutterprojet/widgets/loading_message.dart';
 import 'package:flutterprojet/widgets/prevision_widget.dart';
 import '../models/weather.dart';
 import '../models/forecast.dart';
@@ -10,6 +11,7 @@ import '../services/weather_service.dart';
 import '../utils/constants.dart';
 
 class MainScreen extends StatefulWidget {
+  const MainScreen({Key? key}) : super(key: key);
   @override
   _MainScreenState createState() => _MainScreenState();
 }
@@ -20,30 +22,23 @@ class _MainScreenState extends State<MainScreen>
   double _progress = 0.0;
   bool _isLoading = true;
 
-  // Liste de villes à parcourir
   final List<String> _cities = ["Dakar", "Paris", "New York", "Tokyo", "Sydney"];
   int _currentCityIndex = 0;
 
-  // Données météo et prévisions récupérées
   Weather? _currentWeather;
   List<ForecastItem> _forecastItems = [];
 
-  // Service API
   late WeatherService _weatherService;
   late Timer _timer;
 
   @override
   void initState() {
     super.initState();
-
-    // Initialisation de Dio et du service Retrofit avec le baseUrl complet
     Dio dio = Dio();
     _weatherService = WeatherService(dio, baseUrl: Constants.openWeatherBaseUrl);
 
-    // Premier appel API pour la ville courante
     _fetchWeatherForCurrentCity();
 
-    // Animation de 5 secondes pour la jauge
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 5),
@@ -54,8 +49,7 @@ class _MainScreenState extends State<MainScreen>
     });
     _controller.forward();
 
-    // Toutes les 5 secondes, récupérer la météo (et le forecast) pour la ville suivante
-    _timer = Timer.periodic(Duration(seconds: 5), (timer) {
+    _timer = Timer.periodic(const Duration(seconds: 5), (timer) {
       _controller.reset();
       _controller.forward();
       _fetchWeatherForCurrentCity();
@@ -63,39 +57,34 @@ class _MainScreenState extends State<MainScreen>
   }
 
   Future<void> _fetchWeatherForCurrentCity() async {
-    setState(() {
-      _isLoading = true;
-    });
-
+    setState(() => _isLoading = true);
     String city = _cities[_currentCityIndex];
 
     try {
-      // Récupération de la météo actuelle
       final weather = await _weatherService.getWeather(
-          city, "metric", Constants.openWeatherApiKey);
-      setState(() {
-        _currentWeather = weather;
-      });
-      // Récupération des prévisions pour la même ville
+        city,
+        "metric",
+        Constants.openWeatherApiKey,
+      );
+      setState(() => _currentWeather = weather);
       await _fetchForecastForCity(city);
     } catch (e) {
       print("Erreur lors de la récupération des données pour $city: $e");
     }
 
-    setState(() {
-      _isLoading = false;
-    });
+    setState(() => _isLoading = false);
 
-    // Passer à la ville suivante
     _currentCityIndex = (_currentCityIndex + 1) % _cities.length;
   }
 
   Future<void> _fetchForecastForCity(String city) async {
     try {
       final forecastResponse = await _weatherService.getForecast(
-          city, "metric", Constants.openWeatherApiKey);
+        city,
+        "metric",
+        Constants.openWeatherApiKey,
+      );
       setState(() {
-        // Ici, nous prenons les 3 premiers éléments de la réponse
         _forecastItems = forecastResponse.list.take(3).toList();
       });
     } catch (e) {
@@ -112,21 +101,50 @@ class _MainScreenState extends State<MainScreen>
 
   @override
   Widget build(BuildContext context) {
-    // Pour la jauge, on affiche la température récupérée (ou un placeholder)
     final temperature = _currentWeather?.main.temperature;
     final cityName = _currentWeather?.city;
 
+    bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final gradientColors = isDark
+        ? [Colors.grey[800]!, Colors.grey[900]!]
+        : [Colors.blue[500]!, Colors.blue[200]!];
+
     return Scaffold(
       appBar: AppBar(
-        title: Text('Météo en Temps Réel'),
+        title: const Text(
+          'Météo en Temps Réel',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         centerTitle: true,
-        backgroundColor: Colors.blue[200],
+
+        backgroundColor: isDark ? Colors.grey[800]!: Colors.blue[500]!,
+
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios),
+          onPressed: () => Navigator.pop(context),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.brightness_6),
+            onPressed: () {
+              // On appelle la méthode toggleTheme()
+              MyApp.of(context).toggleTheme();
+            },
+          ),
+        ],
       ),
-      bottomNavigationBar: _buildBottomAppBar(),
+      floatingActionButton: const BottomPlus(),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      bottomNavigationBar: const BottomAppBarWidget(),
+
       body: Container(
+        // Le gradient pourra s'adapter selon le thème
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [Colors.blue[200]!, Colors.blue[800]!],
+            colors: gradientColors,
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
@@ -134,36 +152,24 @@ class _MainScreenState extends State<MainScreen>
         child: SafeArea(
           child: Column(
             children: [
-
               const SizedBox(height: 40),
-
               _buildTopDaysSection(),
-
               const SizedBox(height: 50),
-
-              // Jauge de progression animée avec données réelles
-            CustomRadialGauge(
-              progress: _progress, // Supprimez cette ligne, car la progression est maintenant calculée en interne
-              size: 200,
-              strokeWidth: 20,
-              backgroundColor: Colors.blue,
-              progressColor: Colors.white,
-              temperature: temperature, // Température récupérée
-              city: cityName, // Nom de la ville
-              maxTemperature: 50.0, // Température maximale (ajustez selon vos besoins)
-            ),
-
+              // Jauge
+              CustomRadialGauge(
+                progress: _progress,
+                size: 200,
+                strokeWidth: 20,
+                progressColor: Colors.blue[800]!,
+                backgroundColor: Colors.white.withOpacity(0.20),
+                temperature: temperature,
+                city: cityName,
+                maxTemperature: 50.0,
+              ),
               const SizedBox(height: 20),
-
-              // Message d'attente pendant le chargement
-              if (_isLoading) LoadingMessage(),
+              // Espace, chargement, etc.
               const SizedBox(height: 40),
-
-              // Affichage de la liste de prévisions réelle
-              // _buildBottomForecastList(),
-
               PrevisionWidget(forecastItems: _forecastItems),
-
             ],
           ),
         ),
@@ -178,31 +184,9 @@ class _MainScreenState extends State<MainScreen>
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           _DayCard(day: 'Lundi', image: "assets/images/nc03.png"),
-          _DayCard(day: 'Mardi', image: "assets/images/nc03.png", isToday: true),
+          _DayCard(day: 'Mardi', image: "assets/images/sun01.png", isToday: true),
           _DayCard(day: 'Merc..', image: "assets/images/nc03.png"),
-          _DayCard(day: 'Jeudi', image: "assets/images/nc03.png"),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBottomAppBar() {
-    return BottomAppBar(
-      shape: const CircularNotchedRectangle(),
-      color: Colors.white.withOpacity(0.2),
-      notchMargin: 6,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          IconButton(
-            icon: const Icon(Icons.home, color: Colors.blue),
-            onPressed: () {},
-          ),
-          const SizedBox(width: 40),
-          IconButton(
-            icon: const Icon(Icons.settings, color: Colors.blue),
-            onPressed: () {},
-          ),
+          _DayCard(day: 'Jeudi', image: "assets/images/sun.png"),
         ],
       ),
     );
@@ -213,7 +197,6 @@ class _DayCard extends StatelessWidget {
   final String day;
   final String image;
   final bool isToday;
-
   const _DayCard({
     Key? key,
     required this.day,
@@ -234,11 +217,7 @@ class _DayCard extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Image.asset(
-            image,
-            height: 60,
-            width: 50,
-          ),
+          Image.asset(image, height: 60, width: 50),
           const SizedBox(height: 2),
           Text(
             day,
@@ -253,7 +232,3 @@ class _DayCard extends StatelessWidget {
     );
   }
 }
-
-
-
-
